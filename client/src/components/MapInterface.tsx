@@ -76,6 +76,44 @@ export function MapInterface() {
   };
   const timeRangeMonths = monthsBetween(beforeDate, afterDate);
 
+  // Format coordinates for display and export
+  const displayPoints = currentPoints;
+  const formatLatLng = (p: [number, number]) => `${p[0].toFixed(5)}, ${p[1].toFixed(5)}`;
+  const coordsText = displayPoints.length > 0 ? displayPoints.map(formatLatLng).join('\n') : '';
+
+  const geoJsonFeature = displayPoints.length > 0 ? {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'Polygon',
+      // GeoJSON expects [lng, lat]
+      coordinates: [[...displayPoints.map(p => [p[1], p[0]]), ...(displayPoints.length > 0 ? [[displayPoints[0][1], displayPoints[0][0]]] : [])]]
+    }
+  } : null;
+
+  const copyCoords = async () => {
+    if (!coordsText) return;
+    try {
+      await navigator.clipboard.writeText(coordsText);
+      // small feedback could be added
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const downloadGeoJSON = () => {
+    if (!geoJsonFeature) return;
+    const blob = new Blob([JSON.stringify(geoJsonFeature, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'selected-area.geojson';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   function ClickHandler() {
     useMapEvents({
       click(e) {
@@ -186,6 +224,23 @@ export function MapInterface() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Time Range</span>
                   <span className="font-medium">{timeRangeMonths} months</span>
+                </div>
+              </div>
+
+              {/* Coordinates export / display */}
+              <div className="pt-4">
+                <h4 className="text-sm font-medium mb-2">Selected Coordinates</h4>
+                <div className="flex gap-2 items-start">
+                  <textarea
+                    readOnly
+                    value={coordsText}
+                    rows={6}
+                    className="flex-1 text-xs p-2 rounded border border-input bg-background resize-none"
+                  />
+                  <div className="flex flex-col gap-2">
+                    <Button size="sm" onClick={copyCoords} disabled={!coordsText}>Copy</Button>
+                    <Button size="sm" variant="outline" onClick={downloadGeoJSON} disabled={!geoJsonFeature}>Download GeoJSON</Button>
+                  </div>
                 </div>
               </div>
 
