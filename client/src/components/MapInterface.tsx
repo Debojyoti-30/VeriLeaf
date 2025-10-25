@@ -1,16 +1,57 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Scan } from "lucide-react";
-import { useState } from "react";
+import { Calendar, Scan, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+
+// Leaflet / React-Leaflet
+import { MapContainer, TileLayer, useMapEvents, Polygon } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 export function MapInterface() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [points, setPoints] = useState<[number, number][]>([]);
+  const [tempPoint, setTempPoint] = useState<[number, number] | null>(null);
 
   const handleAnalyze = () => {
     setIsAnalyzing(true);
     // Simulate analysis
     setTimeout(() => setIsAnalyzing(false), 3000);
   };
+
+  const startDrawing = () => {
+    setPoints([]);
+    setTempPoint(null);
+    setDrawing(true);
+  };
+
+  const finishDrawing = () => {
+    setDrawing(false);
+    setTempPoint(null);
+  };
+
+  const clearPolygon = () => {
+    setPoints([]);
+    setTempPoint(null);
+    setDrawing(false);
+  };
+
+  // memoized center
+  const center = useMemo(() => [0, 0] as [number, number], []);
+
+  function ClickHandler() {
+    useMapEvents({
+      click(e) {
+        if (!drawing) return;
+        setPoints(prev => [...prev, [e.latlng.lat, e.latlng.lng]]);
+      },
+      mousemove(e) {
+        if (!drawing) return;
+        setTempPoint([e.latlng.lat, e.latlng.lng]);
+      }
+    });
+    return null;
+  }
 
   return (
     <section className="py-20 bg-secondary/30">
@@ -26,17 +67,43 @@ export function MapInterface() {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Map placeholder */}
+            {/* Map with drawing */}
             <Card className="lg:col-span-2 p-4 bg-card">
-              <div className="aspect-video bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--accent)/0.1),transparent_70%)]" />
-                <div className="text-center space-y-3 relative z-10">
-                  <MapPin className="h-12 w-12 text-accent mx-auto" />
-                  <div>
-                    <p className="font-medium text-foreground">Interactive Map</p>
-                    <p className="text-sm text-muted-foreground">Draw polygon to select your project area</p>
-                  </div>
+              <div className="aspect-video rounded-lg border-2 border-dashed border-border relative overflow-hidden">
+                <MapContainer center={center} zoom={2} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <ClickHandler />
+                  {/* show drawing polygon: include tempPoint to give rubberband while drawing */}
+                  {points.length > 0 && (
+                    <Polygon positions={points.map(p => [p[0], p[1]])} pathOptions={{ color: '#10b981' }} />
+                  )}
+                  {drawing && points.length > 0 && tempPoint && (
+                    <Polygon
+                      positions={[...points, tempPoint].map(p => [p[0], p[1]])}
+                      pathOptions={{ dashArray: '6', color: '#34d399' }}
+                    />
+                  )}
+                </MapContainer>
+                <div className="absolute top-3 left-3 z-[9999] space-x-2 pointer-events-auto">
+                  {!drawing ? (
+                    <Button size="sm" onClick={startDrawing}>Start Drawing</Button>
+                  ) : (
+                    <>
+                      <Button size="sm" onClick={finishDrawing} className="mr-2">Finish</Button>
+                      <Button size="sm" variant="outline" onClick={clearPolygon}>Cancel</Button>
+                    </>
+                  )}
                 </div>
+                <div className="absolute top-3 right-3 z-[9999] pointer-events-auto">
+                  <Button size="sm" variant="destructive" onClick={clearPolygon} disabled={points.length === 0}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Polygon
+                  </Button>
+                </div>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--accent)/0.02),transparent_70%)] pointer-events-none" />
               </div>
             </Card>
 
