@@ -16,9 +16,46 @@ export function MapInterface() {
   const [afterDate, setAfterDate] = useState<string>('2025-10-01');
 
   const handleAnalyze = () => {
+    if (!geoJsonFeature) {
+      // nothing to analyze
+      return;
+    }
     setIsAnalyzing(true);
-    // Simulate analysis
-    setTimeout(() => setIsAnalyzing(false), 3000);
+
+    const payload = {
+      geojson: geoJsonFeature,
+      beforeDate,
+      afterDate,
+      windowDays: 14 // 15-day windows roughly
+    };
+
+    fetch('http://localhost:4000/api/sentinel/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      })
+      .then((data) => {
+        // data.before and data.after are base64 JPEGs
+        const openBase64 = (b64, name) => {
+          const blob = b64 ? new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'image/jpeg' }) : null;
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        };
+        openBase64(data.before, 'before.jpg');
+        openBase64(data.after, 'after.jpg');
+      })
+      .catch((e) => {
+        // show error
+        // eslint-disable-next-line no-console
+        console.error('Analysis failed', e);
+        alert('Analysis failed: ' + e);
+      })
+      .finally(() => setIsAnalyzing(false));
   };
 
   const startDrawing = () => {
