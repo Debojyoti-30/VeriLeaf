@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { Leaf, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ConnectWalletButton } from "./ConnectWalletButton";
 
 export function Navbar() {
   return (
@@ -34,10 +35,11 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Button className="hidden md:flex gap-2 bg-gradient-accent hover:opacity-90 transition-opacity shadow-eco">
+          {/* <Button className="hidden md:flex gap-2 bg-gradient-accent hover:opacity-90 transition-opacity shadow-eco">
             <Wallet className="h-4 w-4" />
             Connect Wallet
-          </Button>
+          </Button> */}
+          <ConnectWalletButton/>
         </div>
       </div>
     </nav>
