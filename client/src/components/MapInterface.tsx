@@ -12,6 +12,8 @@ export function MapInterface() {
   const [drawing, setDrawing] = useState(false);
   const [points, setPoints] = useState<[number, number][]>([]);
   const [tempPoint, setTempPoint] = useState<[number, number] | null>(null);
+  const [beforeDate, setBeforeDate] = useState<string>('2023-01-01');
+  const [afterDate, setAfterDate] = useState<string>('2025-10-01');
 
   const handleAnalyze = () => {
     setIsAnalyzing(true);
@@ -36,8 +38,43 @@ export function MapInterface() {
     setDrawing(false);
   };
 
+  // compute polygon area (spherical) in km^2 using the algorithm by
+  // Chamberlain & Duquette: area = |sum((lon2-lon1)*(sin(lat1)+sin(lat2)))| * R^2 / 2
+  const polygonAreaKm2 = (coords: [number, number][]) => {
+    if (!coords || coords.length < 3) return 0;
+    const R = 6378137; // Earth's radius in meters (WGS84)
+    const rad = (deg: number) => (deg * Math.PI) / 180;
+    let sum = 0;
+    for (let i = 0; i < coords.length; i++) {
+      const [lat1, lon1] = coords[i];
+      const [lat2, lon2] = coords[(i + 1) % coords.length];
+      sum += (rad(lon2) - rad(lon1)) * (Math.sin(rad(lat1)) + Math.sin(rad(lat2)));
+    }
+    const area = Math.abs(sum) * (R * R) / 2.0; // area in square meters
+    return area / 1e6; // km^2
+  };
+
+  // currentPoints includes tempPoint while drawing so area updates live
+  const currentPoints = drawing && tempPoint ? [...points, tempPoint] : points;
+  const areaKm2 = polygonAreaKm2(currentPoints);
+
   // memoized center
   const center = useMemo(() => [0, 0] as [number, number], []);
+
+  const monthsBetween = (fromIso: string, toIso: string) => {
+    try {
+      const from = new Date(fromIso);
+      const to = new Date(toIso);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return 0;
+      let months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+      // adjust if day of month in 'to' is less than 'from'
+      if (to.getDate() < from.getDate()) months -= 1;
+      return Math.max(0, months);
+    } catch (e) {
+      return 0;
+    }
+  };
+  const timeRangeMonths = monthsBetween(beforeDate, afterDate);
 
   function ClickHandler() {
     useMapEvents({
@@ -121,7 +158,8 @@ export function MapInterface() {
                     <input 
                       type="date" 
                       className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
-                      defaultValue="2023-01-01"
+                      value={beforeDate}
+                      onChange={(e) => setBeforeDate(e.target.value)}
                     />
                   </div>
 
@@ -133,7 +171,8 @@ export function MapInterface() {
                     <input 
                       type="date" 
                       className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
-                      defaultValue="2025-10-01"
+                      value={afterDate}
+                      onChange={(e) => setAfterDate(e.target.value)}
                     />
                   </div>
                 </div>
@@ -142,11 +181,11 @@ export function MapInterface() {
               <div className="space-y-3 pt-4 border-t border-border">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Area Selected</span>
-                  <span className="font-medium">0.42 km²</span>
+                  <span className="font-medium">{areaKm2 ? areaKm2.toFixed(2) : '0.00'} km²</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Time Range</span>
-                  <span className="font-medium">33 months</span>
+                  <span className="font-medium">{timeRangeMonths} months</span>
                 </div>
               </div>
 
