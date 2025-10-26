@@ -2,10 +2,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Scan, Trash2 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { ImpactResults } from "@/components/ImpactResults";
 
 // Leaflet / React-Leaflet
 import { MapContainer, TileLayer, useMapEvents, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+
+interface AnalysisResult {
+  before: string;
+  after: string;
+  beforePath: string;
+  afterPath: string;
+}
 
 export function MapInterface() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -14,6 +22,8 @@ export function MapInterface() {
   const [tempPoint, setTempPoint] = useState<[number, number] | null>(null);
   const [beforeDate, setBeforeDate] = useState<string>('2023-01-01');
   const [afterDate, setAfterDate] = useState<string>('2025-10-01');
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [showResults, setShowResults] = useState(false);
 
   const handleAnalyze = () => {
     if (!geoJsonFeature) {
@@ -39,15 +49,9 @@ export function MapInterface() {
         return r.json();
       })
       .then((data) => {
-        // data.before and data.after are base64 JPEGs
-        const openBase64 = (b64, name) => {
-          const blob = b64 ? new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'image/jpeg' }) : null;
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-        };
-        openBase64(data.before, 'before.jpg');
-        openBase64(data.after, 'after.jpg');
+        // Store the analysis results instead of opening blob URLs
+        setAnalysisResult(data);
+        setShowResults(true);
       })
       .catch((e) => {
         // show error
@@ -302,6 +306,15 @@ export function MapInterface() {
           </div>
         </div>
       </div>
+
+      {/* Impact Analysis Results */}
+      {showResults && analysisResult && (
+        <ImpactResults 
+          analysisData={analysisResult}
+          areaKm2={areaKm2}
+          timeRangeMonths={timeRangeMonths}
+        />
+      )}
     </section>
   );
 }
