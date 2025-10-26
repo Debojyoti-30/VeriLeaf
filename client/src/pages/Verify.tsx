@@ -130,12 +130,12 @@ const Verify = () => {
         {/* Header */}
         <div className="mb-8 space-y-4">
           <div className="flex items-center gap-3">
-            <Badge className="bg-accent/10 text-accent hover:bg-accent/20">
+            <div className="text-sm font-medium text-accent bg-accent/10 px-3 py-1 rounded-full">
               Satellite Analysis
-            </Badge>
-            <Badge variant="outline" className="border-primary/50">
+            </div>
+            <div className="text-sm font-medium text-primary border border-primary/50 px-3 py-1 rounded-full">
               AI Powered
-            </Badge>
+            </div>
           </div>
           <h1 className="text-4xl md:text-5xl font-['Space_Grotesk'] font-bold">
             Verify Environmental Impact
